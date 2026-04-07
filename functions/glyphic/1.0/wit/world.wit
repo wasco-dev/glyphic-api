@@ -1,0 +1,13 @@
+package wasco-dev:glyphic@0.1.0;
+
+interface glyphic {
+    get-calls: func() -> string;
+    get-call-by-id: func(id: string) -> string;
+    get-call-media-by-id: func(id: string) -> string;
+    get-call-snippets-by-id: func(id: string) -> string;
+}
+
+world main {
+    export glyphic;
+}
+
