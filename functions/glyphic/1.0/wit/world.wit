@@ -1,10 +1,73 @@
-package wasco-dev:glyphic@0.1.0;
+package wasco-dev:glyphic@1.0.0;
 
+/// Glyphic API - Access calls, media, and transcripts
 interface glyphic {
-    get-calls: func() -> string;
-    get-call-by-id: func(id: string) -> string;
-    get-call-media-by-id: func(id: string) -> string;
-    get-call-snippets-by-id: func(id: string) -> string;
+    /// GET /v1/test/ping - Validates API connectivity
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    ///
+    /// # Returns
+    /// Simple "pong" response
+    test-ping: func(api-key: string) -> string;
+
+    /// GET /v1/calls/ - Retrieve list of calls for your organization
+    ///
+    /// Only public calls are returned (all private calls are excluded)
+    /// Results are sorted by start time in descending order (newest first)
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - query-params: JSON string with optional filters:
+    ///   - participant_email: Filter by participant email (case insensitive)
+    ///   - start_time_from: Filter calls starting from this time (UTC ISO 8601)
+    ///   - start_time_to: Filter calls starting up to this time (UTC ISO 8601)
+    ///   - title_filter: Filter calls by call title
+    ///   - cursor: Cursor for pagination
+    ///   - limit: Number of items per page (default: 20, max: 100)
+    ///   - direction: Pagination direction ("next" or "prev", default: "next")
+    ///
+    /// # Returns
+    /// JSON with paginated list of calls and pagination info
+    get-calls: func(api-key: string, query-params: string) -> string;
+
+    /// GET /v1/calls/{call_id} - Retrieve a call by its ID
+    ///
+    /// media_url is a presigned URL that expires in 24 hours
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - call-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON with full call details including transcript, summary, participants, etc.
+    get-call-by-id: func(api-key: string, call-id: string) -> string;
+
+    /// GET /v1/calls/{call_id}/media - Retrieve a call's media URL and type
+    ///
+    /// media_url is a presigned URL that expires in 24 hours
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - call-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON with media_type ("audio" or "video") and media_url
+    get-call-media-by-id: func(api-key: string, call-id: string) -> string;
+
+    /// GET /v1/calls/{call_id}/snippets - Retrieve a call's snippets
+    ///
+    /// Snippets are sorted by created_at_utc in descending order (newest first)
+    /// media_url is a presigned URL that expires in 24 hours
+    /// transcript_turns are filtered to the snippet time range
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - call-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON array of call snippets with media, timestamps, and transcript turns
+    get-call-snippets-by-id: func(api-key: string, call-id: string) -> string;
 }
 
 world main {

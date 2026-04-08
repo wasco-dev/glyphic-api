@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 wit-bindgen = "0.42.0"
 wstd = "0.6.6"
-    
+urlencoding = "2.1"
