@@ -1,7 +1,7 @@
-package wasco-dev:glyphic@1.0.0;
+package wasco-dev:glyphic-datasource@1.0.0;
 
 /// Glyphic API - Access calls, media, and transcripts
-interface glyphic {
+interface glyphic-datasource {
     /// GET /v1/test/ping - Validates API connectivity
     ///
     /// # Parameters
@@ -71,6 +71,6 @@ interface glyphic {
 }
 
 world main {
-    export glyphic;
+    export glyphic-datasource;
 }
 

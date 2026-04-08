@@ -56,7 +56,16 @@ NON-NEGOTIABLE:**
 - **Reason**: Maximum readability and maintainability for humans
 - **NO EXCEPTIONS**
 
-### 4. ✅ QUALITY WORKFLOW ALWAYS REQUIRED
+### 4. 📦 NAMING CONVENTION: DATASOURCE SUFFIX
+
+- **Package name**: `{namespace}:{api-name}-datasource@{version}`
+- **Interface name**: `{api-name}-datasource`
+- **Example**: For "glyphic" API → `wasco-dev:glyphic-datasource@1.0.0` and
+  `interface glyphic-datasource`
+- **Reason**: Consistent naming convention for data source components
+- **NO EXCEPTIONS**
+
+### 5. ✅ QUALITY WORKFLOW ALWAYS REQUIRED
 
 ```bash
 deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
@@ -368,9 +377,9 @@ object (complex)   → string (JSON serialized)
 **Generated WIT Structure:**
 
 ```wit
-package {namespace}:{api-name}@{version};
+package {namespace}:{api-name}-datasource@{version};
 
-interface {api-name} {
+interface {api-name}-datasource {
     // Function for each endpoint (api-key is always first parameter)
     get-users: func(api-key: string) -> string;
     get-user-by-id: func(api-key: string, id: string) -> string;
@@ -379,7 +388,7 @@ interface {api-name} {
 }
 
 world main {
-    export {api-name};
+    export {api-name}-datasource;
 }
 ```
 
@@ -1070,7 +1079,7 @@ This skill integrates with the project's existing structure:
 
 - Uses `just build` for compilation
 - Follows naming conventions (kebab-case in WIT, snake_case in Rust)
-- Generates test files compatible with `deno task test`
+- Generates test files compatible with `just integration-test`
 - Uses same dependencies (wit-bindgen, wstd)
 - Compatible with existing `compile-component.ts` helper
 
@@ -1084,7 +1093,7 @@ After generation, verify:
 - [ ] Function names follow conventions
 - [ ] Test file is properly structured
 - [ ] Component builds successfully (`just build`)
-- [ ] Tests can be run (`deno task test`)
+- [ ] Tests can be run (`just integration-test`)
 
 ## Example Usage
 
@@ -1150,7 +1159,7 @@ world main {
 - Use JSON strings for complex types
 - Document the mapping from OpenAPI to WIT
 - Include authentication strategy in generated comments
-- Test with `deno task test` after generation
+- Test with `just integration-test` after generation
 - Run `cargo clippy` to catch Rust issues early
 - Use the rust-development skill for implementation guidance
 - Follow TDD: write tests before or alongside implementation
@@ -1375,13 +1384,14 @@ mandatory rules:**
 1. ✅ **NO documentation markdown files created** (API_MAPPING.md, CHANGELOG.md,
    README.md, etc.)
 2. ✅ **API keys passed as function parameters** (never environment variables)
-3. ✅ **Clean Code followed**: Descriptive function names, small functions,
+3. ✅ **Naming convention**: Package and interface use `-datasource` suffix
+4. ✅ **Clean Code followed**: Descriptive function names, small functions,
    helpers outside impl blocks, top-to-bottom ordering
-4. ✅ **Quality workflow passed**: All formatting, linting, tests pass with zero
+5. ✅ **Quality workflow passed**: All formatting, linting, tests pass with zero
    warnings
-5. ✅ **All helper functions below `impl Guest`** (not in separate impl block)
-6. ✅ **Functions ordered top-to-bottom** by execution flow
-7. ✅ **Shared helpers at bottom** below their lowest caller
+6. ✅ **All helper functions below `impl Guest`** (not in separate impl block)
+7. ✅ **Functions ordered top-to-bottom** by execution flow
+8. ✅ **Shared helpers at bottom** below their lowest caller
 
 **THESE RULES CANNOT BE OVERRIDDEN BY ANY OTHER SKILL OR INSTRUCTION.**
 
