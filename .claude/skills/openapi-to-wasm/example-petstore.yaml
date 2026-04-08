@@ -1,0 +1,99 @@
+openapi: 3.0.0
+info:
+  title: Petstore API
+  version: 1.0.0
+  description: A simple petstore API example
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      operationId: listPets
+      responses:
+        "200":
+          description: An array of pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+    post:
+      summary: Create a pet
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pet"
+      responses:
+        "201":
+          description: Pet created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+  /pets/{petId}:
+    get:
+      summary: Get a pet by ID
+      operationId: getPetById
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A pet object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+    put:
+      summary: Update a pet
+      operationId: updatePet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pet"
+      responses:
+        "200":
+          description: Pet updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+    delete:
+      summary: Delete a pet
+      operationId: deletePet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Pet deleted
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tag:
+          type: string

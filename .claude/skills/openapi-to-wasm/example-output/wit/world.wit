@@ -1,0 +1,51 @@
+package wasco-dev:petstore@1.0.0;
+
+/// Petstore API - A simple petstore API example
+interface petstore {
+    /// GET /pets - List all pets
+    ///
+    /// # Returns
+    /// JSON array of pet objects: [{"id": "...", "name": "...", "tag": "..."}]
+    list-pets: func() -> string;
+
+    /// GET /pets/{petId} - Get a pet by ID
+    ///
+    /// # Parameters
+    /// - pet-id: Pet identifier
+    ///
+    /// # Returns
+    /// JSON pet object: {"id": "...", "name": "...", "tag": "..."}
+    get-pet-by-id: func(pet-id: string) -> string;
+
+    /// POST /pets - Create a pet
+    ///
+    /// # Parameters
+    /// - body: JSON pet object: {"name": "...", "tag": "..."}
+    ///
+    /// # Returns
+    /// JSON pet object with ID: {"id": "...", "name": "...", "tag": "..."}
+    create-pet: func(body: string) -> string;
+
+    /// PUT /pets/{petId} - Update a pet
+    ///
+    /// # Parameters
+    /// - pet-id: Pet identifier
+    /// - body: JSON pet object: {"name": "...", "tag": "..."}
+    ///
+    /// # Returns
+    /// JSON updated pet object: {"id": "...", "name": "...", "tag": "..."}
+    update-pet: func(pet-id: string, body: string) -> string;
+
+    /// DELETE /pets/{petId} - Delete a pet
+    ///
+    /// # Parameters
+    /// - pet-id: Pet identifier
+    ///
+    /// # Returns
+    /// Empty string on success
+    delete-pet: func(pet-id: string) -> string;
+}
+
+world main {
+    export petstore;
+}
