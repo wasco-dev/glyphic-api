@@ -37,5 +37,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 target/
 
 *.wasm
-
-/functions/**/**/wit/deps/
+wit/deps/

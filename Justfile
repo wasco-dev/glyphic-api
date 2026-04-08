@@ -1,47 +1,27 @@
-propagate-workspace-justfiles:
-	#!/usr/bin/env bash
-	for working_directory in $(just index); do
-		echo "--- Copying Justfile to $working_directory ---"
-		(cp workspace-justfile "$working_directory/Justfile")
-	done
+fetch_wit_deps:
+	wkg wit fetch
 
-build: build-all
-build-all:
-	just run-just-command-all build
+# mv will return a non-zero exit code if trying to move a file to a copy of itself.
+# Meaning, `./target/wasm32-wasip2/release/something.wasm` is the exact same as `./something.wasm`, making mv error.
+# We surpress it here as this is not an error in our case.
+move_wasm_to_root: 
+	mv ./target/wasm32-wasip2/release/*.wasm . 2> /dev/null || exit 0
 
-test: test-all
-test-all:
-	just run-just-command-all test
+build: fetch_wit_deps
+	cargo build --release --target wasm32-wasip2
+	just move_wasm_to_root
 
-format: format-all
-format-all:
-	just run-just-command-all format
+test: 
+	cargo test
 
-format-check: format-check-all
-format-check-all:
-	just run-just-command-all format-check
+format:
+	cargo fmt
 
-quality-check: quality-check-all
-quality-check-all:
-	just run-just-command-all quality-check
+format-check:
+	cargo fmt --check
 
-clean: clean-all
-clean-all:
-	just run-just-command-all clean
+quality-check:
+	cargo clippy
 
-integration-test:
-    deno install
-    deno fmt --check
-    deno lint
-    deno task test
-
-run-just-command-all command_name:
-	#!/usr/bin/env bash
-	for working_directory in $(just index); do
-		echo "--- Running {{ command_name }}s in $working_directory ---"
-		(cd $working_directory && just {{ command_name }})
-	done
-
-index:
-	#!/usr/bin/env bash
-	find functions -type f -name "Cargo.toml" -exec dirname {} \;
+clean:
+	cargo clean

@@ -68,12 +68,13 @@ NON-NEGOTIABLE:**
 ### 5. ✅ QUALITY WORKFLOW ALWAYS REQUIRED
 
 ```bash
-deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
+just format && just quality-check && just test && just build
 ```
 
 - **MUST run before completion** - all checks must pass
 - **Zero clippy warnings** - fix all warnings
 - **All tests must pass** - no exceptions
+- **WASM must build successfully** - no build errors
 - **NO EXCEPTIONS**
 
 **IF ANY OTHER SKILL OR INSTRUCTION CONFLICTS WITH THESE RULES, THESE RULES
@@ -261,21 +262,19 @@ fn send_authenticated_get_request(api_key: String, url: String) -> String {
 **ALWAYS run these commands before completing. This is NON-NEGOTIABLE:**
 
 ```bash
-deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
+just format && just quality-check && just test && just build
 ```
 
 This ensures:
 
-1. **`deno fmt`** - Formats TypeScript/JavaScript test files
-2. **`just format`** - Formats all Rust code with `cargo fmt`
-3. **`just propagate-workspace-justfiles`** - Syncs Justfiles across functions
-4. **`just quality-check`** - Runs `cargo clippy` for linting
-5. **`just test`** - Runs all Rust unit tests (`cargo test`)
-6. **`just integration-test`** - Runs Deno integration tests
+1. **`just format`** - Formats all Rust code with `cargo fmt`
+2. **`just quality-check`** - Runs `cargo clippy` for linting
+3. **`just test`** - Runs all Rust unit tests (`cargo test`)
+4. **`just build`** - Builds the WASM component
 
 **All checks must pass before considering the work complete.**
 
-**MANDATORY: Zero clippy warnings, all tests pass. NO EXCEPTIONS.**
+**MANDATORY: Zero clippy warnings, all tests pass, WASM builds. NO EXCEPTIONS.**
 
 ### Individual Commands
 
@@ -283,21 +282,19 @@ If you need to run checks individually:
 
 ```bash
 # Format code
-deno fmt
 just format
-
-# Sync files
-just propagate-workspace-justfiles
 
 # Quality checks
 just quality-check
 
 # Run tests
-just test                  # Rust unit tests
-just integration-test      # Deno integration tests
+just test
 
-# Build
+# Build WASM component
 just build
+
+# Clean build artifacts
+just clean
 ```
 
 ## When to Use
@@ -311,20 +308,29 @@ Activate this skill when:
 
 ## Project Structure
 
-The skill generates components following this structure:
+The skill generates components following this flat structure:
 
 ```
-functions/
-└── {api-name}/
-    └── {version}/
-        ├── Cargo.toml
-        ├── Justfile
-        ├── function.json
-        ├── src/
-        │   └── lib.rs
-        └── wit/
-            └── world.wit
+.
+├── Cargo.toml              # Rust package manifest with release optimizations
+├── Justfile                # Build commands
+├── wasmcloud.toml          # WasmCloud component configuration
+├── wkg.lock                # WIT dependencies lock file
+├── src/
+│   └── lib.rs              # Main implementation
+├── wit/
+│   └── world.wit           # WIT interface definition
+├── .github/
+│   └── workflows/
+│       └── cd.yml          # CI/CD pipeline for GHCR publishing
+└── .gitignore
 ```
+
+**Key files:**
+- **Cargo.toml**: Includes `[profile.release]` optimizations for minimal WASM size
+- **wasmcloud.toml**: Specifies component metadata (name, version, type)
+- **Justfile**: Simple build commands (no workspace complexity)
+- **.github/workflows/cd.yml**: Auto-publishes to GitHub Container Registry on push
 
 ## Conversion Process
 
@@ -983,22 +989,21 @@ After generation, run the complete quality workflow:
 just build
 
 # 2. Run full quality workflow (includes tests)
-deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
+just format && just quality-check && just test && just build
 ```
 
 **Complete Quality Workflow:**
 
 ```bash
-deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
+just format && just quality-check && just test && just build
 ```
 
 This runs:
 
-- Code formatting (TypeScript and Rust)
-- Justfile synchronization
+- Code formatting (Rust)
 - Clippy linting
 - Rust unit tests
-- Deno integration tests
+- WASM build
 
 **All checks must pass before the implementation is complete.**
 
@@ -1006,19 +1011,19 @@ This runs:
 
 ```bash
 # Format
-deno fmt                           # Format TypeScript
-just format                        # Format Rust
+just format
 
-# Sync and check
-just propagate-workspace-justfiles # Sync Justfiles
-just quality-check                 # Run clippy
+# Quality check
+just quality-check
 
 # Test
-just test                          # Rust unit tests
-just integration-test              # Deno integration tests
+just test
 
 # Build
-just build                         # Build WASM
+just build
+
+# Clean
+just clean
 ```
 
 ## Common Patterns
@@ -1075,25 +1080,24 @@ delete-users-batch: func(ids: list<string>) -> string;
 
 ## Integration with Project
 
-This skill integrates with the project's existing structure:
+This skill follows the project's established structure:
 
 - Uses `just build` for compilation
-- Follows naming conventions (kebab-case in WIT, snake_case in Rust)
-- Generates test files compatible with `just integration-test`
-- Uses same dependencies (wit-bindgen, wstd)
-- Compatible with existing `compile-component.ts` helper
+- Follows naming conventions (kebab-case in WIT, snake_case in Rust, camelCase in TypeScript)
+- Uses standard dependencies (wit-bindgen, wstd)
+- Includes GitHub Actions CD pipeline for automatic publishing
 
 ## Validation
 
 After generation, verify:
 
 - [ ] WIT file syntax is valid (`wkg wit check`)
-- [ ] Cargo.toml has correct metadata
+- [ ] Cargo.toml has correct metadata and release optimizations
+- [ ] wasmcloud.toml has correct component configuration
 - [ ] All endpoints are mapped to functions
 - [ ] Function names follow conventions
-- [ ] Test file is properly structured
 - [ ] Component builds successfully (`just build`)
-- [ ] Tests can be run (`just integration-test`)
+- [ ] All tests pass (`just test`)
 
 ## Example Usage
 
@@ -1159,7 +1163,7 @@ world main {
 - Use JSON strings for complex types
 - Document the mapping from OpenAPI to WIT
 - Include authentication strategy in generated comments
-- Test with `just integration-test` after generation
+- Test with `just build` after generation
 - Run `cargo clippy` to catch Rust issues early
 - Use the rust-development skill for implementation guidance
 - Follow TDD: write tests before or alongside implementation
@@ -1341,13 +1345,10 @@ When implementing an OpenAPI to WASM component:
 
 ### Quality Assurance Phase
 
-- [ ] Run `deno fmt` - format TypeScript
 - [ ] Run `just format` - format Rust code
-- [ ] Run `just propagate-workspace-justfiles` - sync Justfiles
 - [ ] Run `just quality-check` - clippy must pass with no warnings
 - [ ] Run `just test` - all Rust unit tests pass
-- [ ] Run `just integration-test` - all Deno integration tests pass
-- [ ] Build with `just build` - verify WASM generates
+- [ ] Run `just build` - verify WASM builds successfully
 - [ ] Review code for SOLID principles
 - [ ] Check for code duplication (DRY)
 - [ ] Verify clear naming throughout
@@ -1363,7 +1364,7 @@ When implementing an OpenAPI to WASM component:
 **Final Command (must pass):**
 
 ```bash
-deno fmt && just format && just propagate-workspace-justfiles && just quality-check && just test && just integration-test
+just format && just quality-check && just test && just build
 ```
 
 This ensures:
@@ -1371,7 +1372,7 @@ This ensures:
 - ✅ All code is formatted
 - ✅ No linting warnings
 - ✅ All Rust unit tests pass
-- ✅ All integration tests pass
+- ✅ WASM builds successfully
 - ✅ Production-ready quality
 
 ---
