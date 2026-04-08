@@ -5,7 +5,7 @@ mod bindings {
     export! {Glyphic}
 }
 
-use crate::bindings::exports::wasco_dev::glyphic_datasource::glyphic_datasource::Guest;
+use crate::bindings::exports::wasco_dev::glyphic_api::glyphic_api::Guest;
 use wstd::http::{Body, Client, HeaderValue, Request, Response};
 use wstd::runtime::block_on;
 

@@ -5,7 +5,7 @@ import { expect } from "@std/expect";
 const wasmPath = "./functions/glyphic/1.0/glyphic.wasm";
 
 const {
-  glyphicDatasource: {
+  glyphicApi: {
     testPing,
     getCalls,
     getCallById,

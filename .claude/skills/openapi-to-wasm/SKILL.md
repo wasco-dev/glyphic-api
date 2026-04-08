@@ -56,13 +56,13 @@ NON-NEGOTIABLE:**
 - **Reason**: Maximum readability and maintainability for humans
 - **NO EXCEPTIONS**
 
-### 4. 📦 NAMING CONVENTION: DATASOURCE SUFFIX
+### 4. 📦 NAMING CONVENTION: API SUFFIX
 
-- **Package name**: `{namespace}:{api-name}-datasource@{version}`
-- **Interface name**: `{api-name}-datasource`
-- **Example**: For "glyphic" API → `wasco-dev:glyphic-datasource@1.0.0` and
-  `interface glyphic-datasource`
-- **Reason**: Consistent naming convention for data source components
+- **Package name**: `{namespace}:{api-name}-api@{version}`
+- **Interface name**: `{api-name}-api`
+- **Example**: For "glyphic" API → `wasco-dev:glyphic-api@1.0.0` and
+  `interface glyphic-api`
+- **Reason**: Consistent naming convention for API components
 - **NO EXCEPTIONS**
 
 ### 5. ✅ QUALITY WORKFLOW ALWAYS REQUIRED
@@ -377,9 +377,9 @@ object (complex)   → string (JSON serialized)
 **Generated WIT Structure:**
 
 ```wit
-package {namespace}:{api-name}-datasource@{version};
+package {namespace}:{api-name}-api@{version};
 
-interface {api-name}-datasource {
+interface {api-name}-api {
     // Function for each endpoint (api-key is always first parameter)
     get-users: func(api-key: string) -> string;
     get-user-by-id: func(api-key: string, id: string) -> string;
@@ -388,7 +388,7 @@ interface {api-name}-datasource {
 }
 
 world main {
-    export {api-name}-datasource;
+    export {api-name}-api;
 }
 ```
 
@@ -1384,7 +1384,7 @@ mandatory rules:**
 1. ✅ **NO documentation markdown files created** (API_MAPPING.md, CHANGELOG.md,
    README.md, etc.)
 2. ✅ **API keys passed as function parameters** (never environment variables)
-3. ✅ **Naming convention**: Package and interface use `-datasource` suffix
+3. ✅ **Naming convention**: Package and interface use `-api` suffix
 4. ✅ **Clean Code followed**: Descriptive function names, small functions,
    helpers outside impl blocks, top-to-bottom ordering
 5. ✅ **Quality workflow passed**: All formatting, linting, tests pass with zero
