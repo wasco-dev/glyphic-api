@@ -1,4 +1,4 @@
-package wasco-dev:glyphic-api@1.0.0;
+package wasco-dev:glyphic-api@0.1.0;
 
 /// Glyphic API - Access calls, media, and transcripts
 interface glyphic-api {
