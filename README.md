@@ -12,7 +12,8 @@ This is a Rust WebAssembly component that provides the Glyphic API integration f
 ## Using
 You can build this component by running the following command in the project in your terminal:
 ```Bash
-wash build
+wkg wit fetch
+cargo build --target=wasm32-wasip2 --release
 ```
 
 ## Interfacing
@@ -24,4 +25,3 @@ world your-world {
     // Your world definition.
 }
 ```
-You will also have to link the component to yours in your wasmcloud.toml as described [here](https://wasmcloud.com/docs/v1/reference/config/#wit-dependency-fetchpull-configuration---registrypull).
