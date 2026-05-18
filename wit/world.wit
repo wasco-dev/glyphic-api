@@ -1,6 +1,6 @@
-package wasco-dev:glyphic-api@0.1.0;
+package wasco-dev:glyphic-api@0.2.0;
 
-/// Glyphic API - Access calls, media, and transcripts
+/// Glyphic API - Access calls, call bots, call tags, media, playbooks, and transcripts
 interface glyphic-api {
     /// GET /v1/test/ping - Validates API connectivity
     ///
@@ -23,6 +23,7 @@ interface glyphic-api {
     ///   - start_time_from: Filter calls starting from this time (UTC ISO 8601)
     ///   - start_time_to: Filter calls starting up to this time (UTC ISO 8601)
     ///   - title_filter: Filter calls by call title
+    ///   - tag_ids: Array of tag IDs to filter by (e.g., ["id1", "id2"])
     ///   - cursor: Cursor for pagination
     ///   - limit: Number of items per page (default: 20, max: 100)
     ///   - direction: Pagination direction ("next" or "prev", default: "next")
@@ -68,9 +69,74 @@ interface glyphic-api {
     /// # Returns
     /// JSON array of call snippets with media, timestamps, and transcript turns
     get-call-snippets-by-id: func(api-key: string, call-id: string) -> string;
+
+    /// POST /v1/call_bots - Join a call with a Glyphic bot
+    ///
+    /// The bot will join the specified meeting and begin recording
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - request-body: JSON string with required fields:
+    ///   - meeting_url: URL of the meeting to join (required)
+    ///
+    /// # Returns
+    /// JSON with the created call bot details
+    join-call: func(api-key: string, request-body: string) -> string;
+
+    /// GET /v1/call_tags/ - List all call tags for your organization
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    ///
+    /// # Returns
+    /// JSON array of call tags
+    list-call-tags: func(api-key: string) -> string;
+
+    /// GET /v1/playbooks/ - List playbooks for your organization
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - query-params: JSON string with optional filters:
+    ///   - cursor: Cursor for pagination
+    ///   - limit: Number of items per page (default: 20, max: 100)
+    ///   - direction: Pagination direction ("next" or "prev", default: "next")
+    ///
+    /// # Returns
+    /// JSON with paginated list of playbooks and pagination info
+    list-playbooks: func(api-key: string, query-params: string) -> string;
+
+    /// GET /v1/playbooks/{id} - Retrieve a playbook by its ID
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - playbook-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON with playbook details
+    get-playbook-by-id: func(api-key: string, playbook-id: string) -> string;
+
+    /// GET /v1/playbooks/{id}/versions - List versions of a playbook
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - playbook-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON array of playbook versions
+    list-playbook-versions: func(api-key: string, playbook-id: string) -> string;
+
+    /// GET /v1/playbooks/{id}/versions/{vid} - Retrieve a specific playbook version
+    ///
+    /// # Parameters
+    /// - api-key: Glyphic API key for authentication
+    /// - playbook-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    /// - version-id: 24-character hex string (e.g., "5eb7cf5a86d9755df3a6c593")
+    ///
+    /// # Returns
+    /// JSON with the specific playbook version details
+    get-playbook-version-by-id: func(api-key: string, playbook-id: string, version-id: string) -> string;
 }
 
 world main {
     export glyphic-api;
 }
-
