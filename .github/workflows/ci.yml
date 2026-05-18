@@ -1,0 +1,11 @@
+  on:
+    pull_request:
+      paths:
+        - "**/*.toml"
+        - "**/*.lock"
+        - "**.rs"
+        - "**.wit"
+
+  jobs:
+    ci:
+      uses: wasco-dev/workflows/.github/workflows/ci.yml@main
