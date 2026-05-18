@@ -8,4 +8,4 @@
 
   jobs:
     ci:
-      uses: wasco-dev/workflows/.github/workflows/ci.yml@main
+      uses: wasco-dev/workflows/ci.yml@main

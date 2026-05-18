@@ -2,14 +2,14 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "**/Cargo.toml"
-      - "**/Cargo.lock"
+      - "**/*.toml"
+      - "**/*.lock"
       - "**.rs"
       - "**.wit"
 
 jobs:
   publish:
-    uses: wasco-dev/workflows/.github/workflows/publish-wasm.yml@main
+    uses: wasco-dev/workflows/cd.yml@main
     permissions:
       contents: read
       packages: write
