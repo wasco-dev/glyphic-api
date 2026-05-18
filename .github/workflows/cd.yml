@@ -8,8 +8,8 @@ on:
       - "**.wit"
 
 jobs:
-  publish:
-    uses: wasco-dev/workflows/cd.yml@main
+  cd:
+    uses: wasco-dev/workflows/.github/workflows/cd.yml@main
     permissions:
       contents: read
       packages: write
