@@ -1,7 +1,41 @@
-package wasco-dev:glyphic-api@0.2.2;
+package wasco-dev:glyphic-api@0.3.0;
 
 /// Glyphic API - Access calls, call bots, call tags, media, playbooks, and transcripts
 interface glyphic-api {
+    /// Error for endpoints that only require authentication (401, 429)
+    variant auth-error {
+        unauthorized(string),
+        too-many-requests(string),
+        unknown(string),
+    }
+
+    /// Error for endpoints with query parameters (401, 422, 429)
+    variant query-error {
+        unauthorized(string),
+        validation(string),
+        too-many-requests(string),
+        unknown(string),
+    }
+
+    /// Error for endpoints that fetch a specific resource (401, 404, 422, 429)
+    variant resource-error {
+        unauthorized(string),
+        not-found(string),
+        validation(string),
+        too-many-requests(string),
+        unknown(string),
+    }
+
+    /// Error for the join-call endpoint (401, 409, 422, 429, 500)
+    variant join-call-error {
+        unauthorized(string),
+        conflict(string),
+        validation(string),
+        too-many-requests(string),
+        internal-error(string),
+        unknown(string),
+    }
+
     /// GET /v1/test/ping - Validates API connectivity
     ///
     /// # Parameters
@@ -9,7 +43,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// Simple "pong" response
-    test-ping: func(api-key: string) -> string;
+    test-ping: func(api-key: string) -> result<string, auth-error>;
 
     /// GET /v1/calls/ - Retrieve list of calls for your organization
     ///
@@ -30,7 +64,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with paginated list of calls and pagination info
-    get-calls: func(api-key: string, query-params: string) -> string;
+    get-calls: func(api-key: string, query-params: string) -> result<string, query-error>;
 
     /// GET /v1/calls/{call_id} - Retrieve a call by its ID
     ///
@@ -42,7 +76,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with full call details including transcript, summary, participants, etc.
-    get-call-by-id: func(api-key: string, call-id: string) -> string;
+    get-call-by-id: func(api-key: string, call-id: string) -> result<string, resource-error>;
 
     /// GET /v1/calls/{call_id}/media - Retrieve a call's media URL and type
     ///
@@ -54,7 +88,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with media_type ("audio" or "video") and media_url
-    get-call-media-by-id: func(api-key: string, call-id: string) -> string;
+    get-call-media-by-id: func(api-key: string, call-id: string) -> result<string, resource-error>;
 
     /// GET /v1/calls/{call_id}/snippets - Retrieve a call's snippets
     ///
@@ -68,7 +102,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON array of call snippets with media, timestamps, and transcript turns
-    get-call-snippets-by-id: func(api-key: string, call-id: string) -> string;
+    get-call-snippets-by-id: func(api-key: string, call-id: string) -> result<string, resource-error>;
 
     /// POST /v1/call_bots - Join a call with a Glyphic bot
     ///
@@ -81,7 +115,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with the created call bot details
-    join-call: func(api-key: string, request-body: string) -> string;
+    join-call: func(api-key: string, request-body: string) -> result<string, join-call-error>;
 
     /// GET /v1/call_tags/ - List all call tags for your organization
     ///
@@ -90,7 +124,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON array of call tags
-    list-call-tags: func(api-key: string) -> string;
+    list-call-tags: func(api-key: string) -> result<string, auth-error>;
 
     /// GET /v1/playbooks/ - List playbooks for your organization
     ///
@@ -103,7 +137,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with paginated list of playbooks and pagination info
-    list-playbooks: func(api-key: string, query-params: string) -> string;
+    list-playbooks: func(api-key: string, query-params: string) -> result<string, query-error>;
 
     /// GET /v1/playbooks/{id} - Retrieve a playbook by its ID
     ///
@@ -113,7 +147,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with playbook details
-    get-playbook-by-id: func(api-key: string, playbook-id: string) -> string;
+    get-playbook-by-id: func(api-key: string, playbook-id: string) -> result<string, resource-error>;
 
     /// GET /v1/playbooks/{id}/versions - List versions of a playbook
     ///
@@ -123,7 +157,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON array of playbook versions
-    list-playbook-versions: func(api-key: string, playbook-id: string) -> string;
+    list-playbook-versions: func(api-key: string, playbook-id: string) -> result<string, resource-error>;
 
     /// GET /v1/playbooks/{id}/versions/{vid} - Retrieve a specific playbook version
     ///
@@ -134,7 +168,7 @@ interface glyphic-api {
     ///
     /// # Returns
     /// JSON with the specific playbook version details
-    get-playbook-version-by-id: func(api-key: string, playbook-id: string, version-id: string) -> string;
+    get-playbook-version-by-id: func(api-key: string, playbook-id: string, version-id: string) -> result<string, resource-error>;
 }
 
 world main {

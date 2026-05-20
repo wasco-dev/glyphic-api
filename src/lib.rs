@@ -5,7 +5,9 @@ mod bindings {
     export! {Glyphic}
 }
 
-use crate::bindings::exports::wasco_dev::glyphic_api::glyphic_api::Guest;
+use crate::bindings::exports::wasco_dev::glyphic_api::glyphic_api::{
+    AuthError, Guest, JoinCallError, QueryError, ResourceError,
+};
 use wstd::http::{Body, Client, HeaderValue, Request, Response};
 use wstd::runtime::block_on;
 
@@ -13,79 +15,101 @@ const API_BASE_URL: &str = "https://api.glyphic.ai/v1";
 
 struct Glyphic;
 
+/// Internal representation of HTTP errors before mapping to WIT-specific variants
+enum HttpError {
+    Unauthorized(String),
+    NotFound(String),
+    Validation(String),
+    Conflict(String),
+    TooManyRequests(String),
+    InternalError(String),
+    Unknown(String),
+}
+
+impl HttpError {
+    fn message(self) -> String {
+        match self {
+            HttpError::Unauthorized(message) => message,
+            HttpError::NotFound(message) => message,
+            HttpError::Validation(message) => message,
+            HttpError::Conflict(message) => message,
+            HttpError::TooManyRequests(message) => message,
+            HttpError::InternalError(message) => message,
+            HttpError::Unknown(message) => message,
+        }
+    }
+}
+
 impl Guest for Glyphic {
     /// GET /v1/test/ping - Validates API connectivity
-    fn test_ping(api_key: String) -> String {
-        send_ping_request_to_api(api_key)
+    fn test_ping(api_key: String) -> Result<String, AuthError> {
+        send_ping_request_to_api(api_key).map_err(map_http_error_to_auth_error)
     }
 
     /// GET /v1/calls/ - Retrieve list of calls for your organization
-    fn get_calls(api_key: String, query_params: String) -> String {
-        match build_query_string_from_json_parameters(&query_params) {
-            Ok(query_string) => send_request_to_get_calls(api_key, query_string),
-            Err(e) => format_error_as_json(&format!("Invalid query parameters: {}", e)),
-        }
+    fn get_calls(api_key: String, query_params: String) -> Result<String, QueryError> {
+        let query_string = build_query_string_from_json_parameters(&query_params)
+            .map_err(QueryError::Validation)?;
+        send_request_to_get_calls(api_key, query_string).map_err(map_http_error_to_query_error)
     }
 
     /// GET /v1/calls/{call_id} - Retrieve a call by its ID
-    fn get_call_by_id(api_key: String, call_id: String) -> String {
-        match validate_hexadecimal_identifier_format(&call_id, "call_id") {
-            Ok(_) => send_request_to_get_call_by_id(api_key, call_id),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn get_call_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&call_id, "call_id")
+            .map_err(ResourceError::Validation)?;
+        send_request_to_get_call_by_id(api_key, call_id).map_err(map_http_error_to_resource_error)
     }
 
     /// GET /v1/calls/{call_id}/media - Retrieve a call's media URL and type
-    fn get_call_media_by_id(api_key: String, call_id: String) -> String {
-        match validate_hexadecimal_identifier_format(&call_id, "call_id") {
-            Ok(_) => send_request_to_get_call_media(api_key, call_id),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn get_call_media_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&call_id, "call_id")
+            .map_err(ResourceError::Validation)?;
+        send_request_to_get_call_media(api_key, call_id).map_err(map_http_error_to_resource_error)
     }
 
     /// GET /v1/calls/{call_id}/snippets - Retrieve a call's snippets
-    fn get_call_snippets_by_id(api_key: String, call_id: String) -> String {
-        match validate_hexadecimal_identifier_format(&call_id, "call_id") {
-            Ok(_) => send_request_to_get_call_snippets(api_key, call_id),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn get_call_snippets_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&call_id, "call_id")
+            .map_err(ResourceError::Validation)?;
+        send_request_to_get_call_snippets(api_key, call_id)
+            .map_err(map_http_error_to_resource_error)
     }
 
     /// POST /v1/call_bots - Join a call with a Glyphic bot
-    fn join_call(api_key: String, request_body: String) -> String {
-        match validate_join_call_request_body(&request_body) {
-            Ok(_) => send_join_call_request(api_key, request_body),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn join_call(api_key: String, request_body: String) -> Result<String, JoinCallError> {
+        validate_join_call_request_body(&request_body).map_err(JoinCallError::Validation)?;
+        send_join_call_request(api_key, request_body).map_err(map_http_error_to_join_call_error)
     }
 
     /// GET /v1/call_tags/ - List all call tags for your organization
-    fn list_call_tags(api_key: String) -> String {
-        send_request_to_list_call_tags(api_key)
+    fn list_call_tags(api_key: String) -> Result<String, AuthError> {
+        send_request_to_list_call_tags(api_key).map_err(map_http_error_to_auth_error)
     }
 
     /// GET /v1/playbooks/ - List playbooks for your organization
-    fn list_playbooks(api_key: String, query_params: String) -> String {
-        match build_query_string_from_json_parameters(&query_params) {
-            Ok(query_string) => send_request_to_list_playbooks(api_key, query_string),
-            Err(e) => format_error_as_json(&format!("Invalid query parameters: {}", e)),
-        }
+    fn list_playbooks(api_key: String, query_params: String) -> Result<String, QueryError> {
+        let query_string = build_query_string_from_json_parameters(&query_params)
+            .map_err(QueryError::Validation)?;
+        send_request_to_list_playbooks(api_key, query_string).map_err(map_http_error_to_query_error)
     }
 
     /// GET /v1/playbooks/{id} - Retrieve a playbook by its ID
-    fn get_playbook_by_id(api_key: String, playbook_id: String) -> String {
-        match validate_hexadecimal_identifier_format(&playbook_id, "playbook_id") {
-            Ok(_) => send_request_to_get_playbook_by_id(api_key, playbook_id),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn get_playbook_by_id(api_key: String, playbook_id: String) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&playbook_id, "playbook_id")
+            .map_err(ResourceError::Validation)?;
+        send_request_to_get_playbook_by_id(api_key, playbook_id)
+            .map_err(map_http_error_to_resource_error)
     }
 
     /// GET /v1/playbooks/{id}/versions - List versions of a playbook
-    fn list_playbook_versions(api_key: String, playbook_id: String) -> String {
-        match validate_hexadecimal_identifier_format(&playbook_id, "playbook_id") {
-            Ok(_) => send_request_to_list_playbook_versions(api_key, playbook_id),
-            Err(e) => format_error_as_json(&e),
-        }
+    fn list_playbook_versions(
+        api_key: String,
+        playbook_id: String,
+    ) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&playbook_id, "playbook_id")
+            .map_err(ResourceError::Validation)?;
+        send_request_to_list_playbook_versions(api_key, playbook_id)
+            .map_err(map_http_error_to_resource_error)
     }
 
     /// GET /v1/playbooks/{id}/versions/{vid} - Retrieve a specific playbook version
@@ -93,21 +117,20 @@ impl Guest for Glyphic {
         api_key: String,
         playbook_id: String,
         version_id: String,
-    ) -> String {
-        if let Err(e) = validate_hexadecimal_identifier_format(&playbook_id, "playbook_id") {
-            return format_error_as_json(&e);
-        }
-        if let Err(e) = validate_hexadecimal_identifier_format(&version_id, "version_id") {
-            return format_error_as_json(&e);
-        }
+    ) -> Result<String, ResourceError> {
+        validate_hexadecimal_identifier_format(&playbook_id, "playbook_id")
+            .map_err(ResourceError::Validation)?;
+        validate_hexadecimal_identifier_format(&version_id, "version_id")
+            .map_err(ResourceError::Validation)?;
         send_request_to_get_playbook_version_by_id(api_key, playbook_id, version_id)
+            .map_err(map_http_error_to_resource_error)
     }
 }
 
 // Ping helpers
 
 /// Send a ping request to validate API connectivity
-fn send_ping_request_to_api(api_key: String) -> String {
+fn send_ping_request_to_api(api_key: String) -> Result<String, HttpError> {
     let url = build_ping_endpoint_url();
     send_authenticated_get_request(api_key, url)
 }
@@ -120,7 +143,7 @@ fn build_ping_endpoint_url() -> String {
 // Calls helpers
 
 /// Send request to get list of calls with optional query parameters
-fn send_request_to_get_calls(api_key: String, query_string: String) -> String {
+fn send_request_to_get_calls(api_key: String, query_string: String) -> Result<String, HttpError> {
     let url = build_calls_endpoint_url(query_string);
     send_authenticated_get_request(api_key, url)
 }
@@ -131,7 +154,7 @@ fn build_calls_endpoint_url(query_string: String) -> String {
 }
 
 /// Send request to get a specific call by ID
-fn send_request_to_get_call_by_id(api_key: String, call_id: String) -> String {
+fn send_request_to_get_call_by_id(api_key: String, call_id: String) -> Result<String, HttpError> {
     let url = build_call_by_id_endpoint_url(&call_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -142,7 +165,7 @@ fn build_call_by_id_endpoint_url(call_id: &str) -> String {
 }
 
 /// Send request to get call media
-fn send_request_to_get_call_media(api_key: String, call_id: String) -> String {
+fn send_request_to_get_call_media(api_key: String, call_id: String) -> Result<String, HttpError> {
     let url = build_call_media_endpoint_url(&call_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -153,7 +176,10 @@ fn build_call_media_endpoint_url(call_id: &str) -> String {
 }
 
 /// Send request to get call snippets
-fn send_request_to_get_call_snippets(api_key: String, call_id: String) -> String {
+fn send_request_to_get_call_snippets(
+    api_key: String,
+    call_id: String,
+) -> Result<String, HttpError> {
     let url = build_call_snippets_endpoint_url(&call_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -166,7 +192,7 @@ fn build_call_snippets_endpoint_url(call_id: &str) -> String {
 // Join call helpers
 
 /// Send request to join a call with a bot
-fn send_join_call_request(api_key: String, request_body: String) -> String {
+fn send_join_call_request(api_key: String, request_body: String) -> Result<String, HttpError> {
     let url = build_call_bots_endpoint_url();
     send_authenticated_post_request(api_key, url, request_body)
 }
@@ -191,7 +217,7 @@ fn validate_join_call_request_body(body: &str) -> Result<(), String> {
 // Call tags helpers
 
 /// Send request to list call tags
-fn send_request_to_list_call_tags(api_key: String) -> String {
+fn send_request_to_list_call_tags(api_key: String) -> Result<String, HttpError> {
     let url = build_call_tags_endpoint_url();
     send_authenticated_get_request(api_key, url)
 }
@@ -204,7 +230,10 @@ fn build_call_tags_endpoint_url() -> String {
 // Playbooks helpers
 
 /// Send request to list playbooks with optional query parameters
-fn send_request_to_list_playbooks(api_key: String, query_string: String) -> String {
+fn send_request_to_list_playbooks(
+    api_key: String,
+    query_string: String,
+) -> Result<String, HttpError> {
     let url = build_playbooks_endpoint_url(query_string);
     send_authenticated_get_request(api_key, url)
 }
@@ -215,7 +244,10 @@ fn build_playbooks_endpoint_url(query_string: String) -> String {
 }
 
 /// Send request to get a specific playbook by ID
-fn send_request_to_get_playbook_by_id(api_key: String, playbook_id: String) -> String {
+fn send_request_to_get_playbook_by_id(
+    api_key: String,
+    playbook_id: String,
+) -> Result<String, HttpError> {
     let url = build_playbook_by_id_endpoint_url(&playbook_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -226,7 +258,10 @@ fn build_playbook_by_id_endpoint_url(playbook_id: &str) -> String {
 }
 
 /// Send request to list playbook versions
-fn send_request_to_list_playbook_versions(api_key: String, playbook_id: String) -> String {
+fn send_request_to_list_playbook_versions(
+    api_key: String,
+    playbook_id: String,
+) -> Result<String, HttpError> {
     let url = build_playbook_versions_endpoint_url(&playbook_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -241,7 +276,7 @@ fn send_request_to_get_playbook_version_by_id(
     api_key: String,
     playbook_id: String,
     version_id: String,
-) -> String {
+) -> Result<String, HttpError> {
     let url = build_playbook_version_by_id_endpoint_url(&playbook_id, &version_id);
     send_authenticated_get_request(api_key, url)
 }
@@ -371,33 +406,32 @@ fn extract_tag_ids_from_json_parameters(json_params: &str) -> Vec<String> {
 // Shared HTTP request functions
 
 /// Send an authenticated GET request to the API
-fn send_authenticated_get_request(api_key: String, url: String) -> String {
-    match block_on(send_authenticated_get_request_async(api_key, url)) {
-        Ok(response) => response,
-        Err(e) => format_error_as_json(&e),
-    }
+fn send_authenticated_get_request(api_key: String, url: String) -> Result<String, HttpError> {
+    block_on(send_authenticated_get_request_async(api_key, url))
 }
 
 /// Send an authenticated GET request asynchronously
 async fn send_authenticated_get_request_async(
     api_key: String,
     url: String,
-) -> Result<String, String> {
+) -> Result<String, HttpError> {
     validate_api_key_is_not_empty(&api_key)?;
 
-    let request = build_authenticated_get_request(&api_key, &url)?;
-    let response = execute_http_request(request).await?;
+    let request = build_authenticated_get_request(&api_key, &url).map_err(HttpError::Unknown)?;
+    let response = execute_http_request(request)
+        .await
+        .map_err(HttpError::Unknown)?;
 
-    check_response_status_is_successful(&response)?;
-    read_response_body_as_string(response).await
+    read_response_body_with_status_check(response).await
 }
 
 /// Send an authenticated POST request to the API
-fn send_authenticated_post_request(api_key: String, url: String, body: String) -> String {
-    match block_on(send_authenticated_post_request_async(api_key, url, body)) {
-        Ok(response) => response,
-        Err(e) => format_error_as_json(&e),
-    }
+fn send_authenticated_post_request(
+    api_key: String,
+    url: String,
+    body: String,
+) -> Result<String, HttpError> {
+    block_on(send_authenticated_post_request_async(api_key, url, body))
 }
 
 /// Send an authenticated POST request asynchronously
@@ -405,20 +439,24 @@ async fn send_authenticated_post_request_async(
     api_key: String,
     url: String,
     body: String,
-) -> Result<String, String> {
+) -> Result<String, HttpError> {
     validate_api_key_is_not_empty(&api_key)?;
 
-    let request = build_authenticated_post_request(&api_key, &url, body)?;
-    let response = execute_http_request(request).await?;
+    let request =
+        build_authenticated_post_request(&api_key, &url, body).map_err(HttpError::Unknown)?;
+    let response = execute_http_request(request)
+        .await
+        .map_err(HttpError::Unknown)?;
 
-    check_response_status_is_successful(&response)?;
-    read_response_body_as_string(response).await
+    read_response_body_with_status_check(response).await
 }
 
 /// Validate that API key is not empty
-fn validate_api_key_is_not_empty(api_key: &str) -> Result<(), String> {
+fn validate_api_key_is_not_empty(api_key: &str) -> Result<(), HttpError> {
     if api_key.trim().is_empty() {
-        Err("API key cannot be empty".to_string())
+        Err(HttpError::Unauthorized(
+            "API key cannot be empty".to_string(),
+        ))
     } else {
         Ok(())
     }
@@ -464,35 +502,82 @@ async fn execute_http_request(request: Request<Body>) -> Result<Response<Body>, 
         .map_err(|e| format!("HTTP request failed: {}", e))
 }
 
-/// Check that response status indicates success
-fn check_response_status_is_successful(response: &Response<Body>) -> Result<(), String> {
+/// Read response body and check status, returning the appropriate HttpError on failure
+async fn read_response_body_with_status_check(
+    response: Response<Body>,
+) -> Result<String, HttpError> {
     let status = response.status();
-
-    if status.is_success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "API request failed with status {}",
-            status.as_u16()
-        ))
-    }
-}
-
-/// Read response body as a string
-async fn read_response_body_as_string(response: Response<Body>) -> Result<String, String> {
     let mut body = response.into_body();
     let contents = body
         .contents()
         .await
-        .map_err(|e| format!("Failed to read response body: {}", e))?;
+        .map_err(|e| HttpError::Unknown(format!("Failed to read response body: {}", e)))?;
 
-    String::from_utf8(contents.to_vec())
-        .map_err(|e| format!("Response body is not valid UTF-8: {}", e))
+    let body_string = String::from_utf8(contents.to_vec())
+        .map_err(|e| HttpError::Unknown(format!("Response body is not valid UTF-8: {}", e)))?;
+
+    if status.is_success() {
+        Ok(body_string)
+    } else {
+        Err(map_status_code_to_http_error(status.as_u16(), body_string))
+    }
 }
 
-/// Format an error message as JSON
-fn format_error_as_json(error_message: &str) -> String {
-    format!(r#"{{"error": "{}"}}"#, error_message.replace('"', "\\\""))
+// Error mapping functions
+
+/// Map an HTTP status code to the appropriate HttpError variant
+fn map_status_code_to_http_error(status: u16, body: String) -> HttpError {
+    match status {
+        401 => HttpError::Unauthorized(body),
+        404 => HttpError::NotFound(body),
+        409 => HttpError::Conflict(body),
+        422 => HttpError::Validation(body),
+        429 => HttpError::TooManyRequests(body),
+        500 => HttpError::InternalError(body),
+        _ => HttpError::Unknown(format!("HTTP {}: {}", status, body)),
+    }
+}
+
+/// Map HttpError to AuthError (401, 429)
+fn map_http_error_to_auth_error(error: HttpError) -> AuthError {
+    match error {
+        HttpError::Unauthorized(message) => AuthError::Unauthorized(message),
+        HttpError::TooManyRequests(message) => AuthError::TooManyRequests(message),
+        other => AuthError::Unknown(other.message()),
+    }
+}
+
+/// Map HttpError to QueryError (401, 422, 429)
+fn map_http_error_to_query_error(error: HttpError) -> QueryError {
+    match error {
+        HttpError::Unauthorized(message) => QueryError::Unauthorized(message),
+        HttpError::Validation(message) => QueryError::Validation(message),
+        HttpError::TooManyRequests(message) => QueryError::TooManyRequests(message),
+        other => QueryError::Unknown(other.message()),
+    }
+}
+
+/// Map HttpError to ResourceError (401, 404, 422, 429)
+fn map_http_error_to_resource_error(error: HttpError) -> ResourceError {
+    match error {
+        HttpError::Unauthorized(message) => ResourceError::Unauthorized(message),
+        HttpError::NotFound(message) => ResourceError::NotFound(message),
+        HttpError::Validation(message) => ResourceError::Validation(message),
+        HttpError::TooManyRequests(message) => ResourceError::TooManyRequests(message),
+        other => ResourceError::Unknown(other.message()),
+    }
+}
+
+/// Map HttpError to JoinCallError (401, 409, 422, 429, 500)
+fn map_http_error_to_join_call_error(error: HttpError) -> JoinCallError {
+    match error {
+        HttpError::Unauthorized(message) => JoinCallError::Unauthorized(message),
+        HttpError::Conflict(message) => JoinCallError::Conflict(message),
+        HttpError::Validation(message) => JoinCallError::Validation(message),
+        HttpError::TooManyRequests(message) => JoinCallError::TooManyRequests(message),
+        HttpError::InternalError(message) => JoinCallError::InternalError(message),
+        other => JoinCallError::Unknown(other.message()),
+    }
 }
 
 #[cfg(test)]
@@ -834,5 +919,245 @@ mod tests {
             url,
             "https://api.glyphic.ai/v1/playbooks/5eb7cf5a86d9755df3a6c593/versions/aabbccdd11223344eeff5566"
         );
+    }
+
+    // Status code to HttpError mapping tests
+
+    #[test]
+    fn test_map_status_code_401_to_unauthorized() {
+        // Arrange
+        let body = "Unauthorized".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(401, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::Unauthorized(message) if message == "Unauthorized"));
+    }
+
+    #[test]
+    fn test_map_status_code_404_to_not_found() {
+        // Arrange
+        let body = "Not found".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(404, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::NotFound(message) if message == "Not found"));
+    }
+
+    #[test]
+    fn test_map_status_code_409_to_conflict() {
+        // Arrange
+        let body = "Conflict".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(409, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::Conflict(message) if message == "Conflict"));
+    }
+
+    #[test]
+    fn test_map_status_code_422_to_validation() {
+        // Arrange
+        let body = "Validation failed".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(422, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::Validation(message) if message == "Validation failed"));
+    }
+
+    #[test]
+    fn test_map_status_code_429_to_too_many_requests() {
+        // Arrange
+        let body = "Rate limited".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(429, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::TooManyRequests(message) if message == "Rate limited"));
+    }
+
+    #[test]
+    fn test_map_status_code_500_to_internal_error() {
+        // Arrange
+        let body = "Server error".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(500, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::InternalError(message) if message == "Server error"));
+    }
+
+    #[test]
+    fn test_map_status_code_unknown_to_unknown() {
+        // Arrange
+        let body = "Bad gateway".to_string();
+
+        // Act
+        let error = map_status_code_to_http_error(502, body);
+
+        // Assert
+        assert!(matches!(error, HttpError::Unknown(message) if message.contains("502")));
+    }
+
+    // HttpError message extraction tests
+
+    #[test]
+    fn test_http_error_message_extracts_inner_string() {
+        // Arrange
+        let error = HttpError::Unauthorized("test message".to_string());
+
+        // Act
+        let message = error.message();
+
+        // Assert
+        assert_eq!(message, "test message");
+    }
+
+    // Auth error mapping tests
+
+    #[test]
+    fn test_map_http_error_unauthorized_to_auth_error() {
+        // Arrange
+        let error = HttpError::Unauthorized("bad key".to_string());
+
+        // Act
+        let auth_error = map_http_error_to_auth_error(error);
+
+        // Assert
+        assert!(matches!(auth_error, AuthError::Unauthorized(message) if message == "bad key"));
+    }
+
+    #[test]
+    fn test_map_http_error_too_many_requests_to_auth_error() {
+        // Arrange
+        let error = HttpError::TooManyRequests("slow down".to_string());
+
+        // Act
+        let auth_error = map_http_error_to_auth_error(error);
+
+        // Assert
+        assert!(
+            matches!(auth_error, AuthError::TooManyRequests(message) if message == "slow down")
+        );
+    }
+
+    #[test]
+    fn test_map_http_error_not_found_falls_through_to_auth_unknown() {
+        // Arrange
+        let error = HttpError::NotFound("missing".to_string());
+
+        // Act
+        let auth_error = map_http_error_to_auth_error(error);
+
+        // Assert
+        assert!(matches!(auth_error, AuthError::Unknown(message) if message == "missing"));
+    }
+
+    // Query error mapping tests
+
+    #[test]
+    fn test_map_http_error_validation_to_query_error() {
+        // Arrange
+        let error = HttpError::Validation("bad input".to_string());
+
+        // Act
+        let query_error = map_http_error_to_query_error(error);
+
+        // Assert
+        assert!(matches!(query_error, QueryError::Validation(message) if message == "bad input"));
+    }
+
+    // Resource error mapping tests
+
+    #[test]
+    fn test_map_http_error_not_found_to_resource_error() {
+        // Arrange
+        let error = HttpError::NotFound("no such call".to_string());
+
+        // Act
+        let resource_error = map_http_error_to_resource_error(error);
+
+        // Assert
+        assert!(
+            matches!(resource_error, ResourceError::NotFound(message) if message == "no such call")
+        );
+    }
+
+    // Join call error mapping tests
+
+    #[test]
+    fn test_map_http_error_conflict_to_join_call_error() {
+        // Arrange
+        let error = HttpError::Conflict("already joined".to_string());
+
+        // Act
+        let join_call_error = map_http_error_to_join_call_error(error);
+
+        // Assert
+        assert!(
+            matches!(join_call_error, JoinCallError::Conflict(message) if message == "already joined")
+        );
+    }
+
+    #[test]
+    fn test_map_http_error_internal_to_join_call_error() {
+        // Arrange
+        let error = HttpError::InternalError("server crash".to_string());
+
+        // Act
+        let join_call_error = map_http_error_to_join_call_error(error);
+
+        // Assert
+        assert!(
+            matches!(join_call_error, JoinCallError::InternalError(message) if message == "server crash")
+        );
+    }
+
+    // API key validation tests
+
+    #[test]
+    fn test_validate_empty_api_key_returns_unauthorized() {
+        // Arrange
+        let empty_key = "";
+
+        // Act
+        let result = validate_api_key_is_not_empty(empty_key);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), HttpError::Unauthorized(_)));
+    }
+
+    #[test]
+    fn test_validate_whitespace_api_key_returns_unauthorized() {
+        // Arrange
+        let whitespace_key = "   ";
+
+        // Act
+        let result = validate_api_key_is_not_empty(whitespace_key);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), HttpError::Unauthorized(_)));
+    }
+
+    #[test]
+    fn test_validate_valid_api_key_succeeds() {
+        // Arrange
+        let valid_key = "sk-test-key-123";
+
+        // Act
+        let result = validate_api_key_is_not_empty(valid_key);
+
+        // Assert
+        assert!(result.is_ok());
     }
 }
