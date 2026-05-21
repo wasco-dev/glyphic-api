@@ -43,62 +43,60 @@ impl HttpError {
 impl Guest for Glyphic {
     /// GET /v1/test/ping - Validates API connectivity
     fn test_ping(api_key: String) -> Result<String, AuthError> {
-        send_ping_request_to_api(api_key).map_err(map_http_error_to_auth_error)
+        Ok(send_ping_request_to_api(api_key)?)
     }
 
     /// GET /v1/calls/ - Retrieve list of calls for your organization
     fn get_calls(api_key: String, query_params: String) -> Result<String, QueryError> {
         let query_string = build_query_string_from_json_parameters(&query_params)
             .map_err(QueryError::Validation)?;
-        send_request_to_get_calls(api_key, query_string).map_err(map_http_error_to_query_error)
+        Ok(send_request_to_get_calls(api_key, query_string)?)
     }
 
     /// GET /v1/calls/{call_id} - Retrieve a call by its ID
     fn get_call_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
         validate_hexadecimal_identifier_format(&call_id, "call_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_get_call_by_id(api_key, call_id).map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_get_call_by_id(api_key, call_id)?)
     }
 
     /// GET /v1/calls/{call_id}/media - Retrieve a call's media URL and type
     fn get_call_media_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
         validate_hexadecimal_identifier_format(&call_id, "call_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_get_call_media(api_key, call_id).map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_get_call_media(api_key, call_id)?)
     }
 
     /// GET /v1/calls/{call_id}/snippets - Retrieve a call's snippets
     fn get_call_snippets_by_id(api_key: String, call_id: String) -> Result<String, ResourceError> {
         validate_hexadecimal_identifier_format(&call_id, "call_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_get_call_snippets(api_key, call_id)
-            .map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_get_call_snippets(api_key, call_id)?)
     }
 
     /// POST /v1/call_bots - Join a call with a Glyphic bot
     fn join_call(api_key: String, request_body: String) -> Result<String, JoinCallError> {
         validate_join_call_request_body(&request_body).map_err(JoinCallError::Validation)?;
-        send_join_call_request(api_key, request_body).map_err(map_http_error_to_join_call_error)
+        Ok(send_join_call_request(api_key, request_body)?)
     }
 
     /// GET /v1/call_tags/ - List all call tags for your organization
     fn list_call_tags(api_key: String) -> Result<String, AuthError> {
-        send_request_to_list_call_tags(api_key).map_err(map_http_error_to_auth_error)
+        Ok(send_request_to_list_call_tags(api_key)?)
     }
 
     /// GET /v1/playbooks/ - List playbooks for your organization
     fn list_playbooks(api_key: String, query_params: String) -> Result<String, QueryError> {
         let query_string = build_query_string_from_json_parameters(&query_params)
             .map_err(QueryError::Validation)?;
-        send_request_to_list_playbooks(api_key, query_string).map_err(map_http_error_to_query_error)
+        Ok(send_request_to_list_playbooks(api_key, query_string)?)
     }
 
     /// GET /v1/playbooks/{id} - Retrieve a playbook by its ID
     fn get_playbook_by_id(api_key: String, playbook_id: String) -> Result<String, ResourceError> {
         validate_hexadecimal_identifier_format(&playbook_id, "playbook_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_get_playbook_by_id(api_key, playbook_id)
-            .map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_get_playbook_by_id(api_key, playbook_id)?)
     }
 
     /// GET /v1/playbooks/{id}/versions - List versions of a playbook
@@ -108,8 +106,10 @@ impl Guest for Glyphic {
     ) -> Result<String, ResourceError> {
         validate_hexadecimal_identifier_format(&playbook_id, "playbook_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_list_playbook_versions(api_key, playbook_id)
-            .map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_list_playbook_versions(
+            api_key,
+            playbook_id,
+        )?)
     }
 
     /// GET /v1/playbooks/{id}/versions/{vid} - Retrieve a specific playbook version
@@ -122,8 +122,11 @@ impl Guest for Glyphic {
             .map_err(ResourceError::Validation)?;
         validate_hexadecimal_identifier_format(&version_id, "version_id")
             .map_err(ResourceError::Validation)?;
-        send_request_to_get_playbook_version_by_id(api_key, playbook_id, version_id)
-            .map_err(map_http_error_to_resource_error)
+        Ok(send_request_to_get_playbook_version_by_id(
+            api_key,
+            playbook_id,
+            version_id,
+        )?)
     }
 }
 
@@ -523,8 +526,6 @@ async fn read_response_body_with_status_check(
     }
 }
 
-// Error mapping functions
-
 /// Map an HTTP status code to the appropriate HttpError variant
 fn map_status_code_to_http_error(status: u16, body: String) -> HttpError {
     match status {
@@ -538,45 +539,49 @@ fn map_status_code_to_http_error(status: u16, body: String) -> HttpError {
     }
 }
 
-/// Map HttpError to AuthError (401, 429)
-fn map_http_error_to_auth_error(error: HttpError) -> AuthError {
-    match error {
-        HttpError::Unauthorized(message) => AuthError::Unauthorized(message),
-        HttpError::TooManyRequests(message) => AuthError::TooManyRequests(message),
-        other => AuthError::Unknown(other.message()),
+impl From<HttpError> for AuthError {
+    fn from(error: HttpError) -> Self {
+        match error {
+            HttpError::Unauthorized(message) => AuthError::Unauthorized(message),
+            HttpError::TooManyRequests(message) => AuthError::TooManyRequests(message),
+            other => AuthError::Unknown(other.message()),
+        }
     }
 }
 
-/// Map HttpError to QueryError (401, 422, 429)
-fn map_http_error_to_query_error(error: HttpError) -> QueryError {
-    match error {
-        HttpError::Unauthorized(message) => QueryError::Unauthorized(message),
-        HttpError::Validation(message) => QueryError::Validation(message),
-        HttpError::TooManyRequests(message) => QueryError::TooManyRequests(message),
-        other => QueryError::Unknown(other.message()),
+impl From<HttpError> for QueryError {
+    fn from(error: HttpError) -> Self {
+        match error {
+            HttpError::Unauthorized(message) => QueryError::Unauthorized(message),
+            HttpError::Validation(message) => QueryError::Validation(message),
+            HttpError::TooManyRequests(message) => QueryError::TooManyRequests(message),
+            other => QueryError::Unknown(other.message()),
+        }
     }
 }
 
-/// Map HttpError to ResourceError (401, 404, 422, 429)
-fn map_http_error_to_resource_error(error: HttpError) -> ResourceError {
-    match error {
-        HttpError::Unauthorized(message) => ResourceError::Unauthorized(message),
-        HttpError::NotFound(message) => ResourceError::NotFound(message),
-        HttpError::Validation(message) => ResourceError::Validation(message),
-        HttpError::TooManyRequests(message) => ResourceError::TooManyRequests(message),
-        other => ResourceError::Unknown(other.message()),
+impl From<HttpError> for ResourceError {
+    fn from(error: HttpError) -> Self {
+        match error {
+            HttpError::Unauthorized(message) => ResourceError::Unauthorized(message),
+            HttpError::NotFound(message) => ResourceError::NotFound(message),
+            HttpError::Validation(message) => ResourceError::Validation(message),
+            HttpError::TooManyRequests(message) => ResourceError::TooManyRequests(message),
+            other => ResourceError::Unknown(other.message()),
+        }
     }
 }
 
-/// Map HttpError to JoinCallError (401, 409, 422, 429, 500)
-fn map_http_error_to_join_call_error(error: HttpError) -> JoinCallError {
-    match error {
-        HttpError::Unauthorized(message) => JoinCallError::Unauthorized(message),
-        HttpError::Conflict(message) => JoinCallError::Conflict(message),
-        HttpError::Validation(message) => JoinCallError::Validation(message),
-        HttpError::TooManyRequests(message) => JoinCallError::TooManyRequests(message),
-        HttpError::InternalError(message) => JoinCallError::InternalError(message),
-        other => JoinCallError::Unknown(other.message()),
+impl From<HttpError> for JoinCallError {
+    fn from(error: HttpError) -> Self {
+        match error {
+            HttpError::Unauthorized(message) => JoinCallError::Unauthorized(message),
+            HttpError::Conflict(message) => JoinCallError::Conflict(message),
+            HttpError::Validation(message) => JoinCallError::Validation(message),
+            HttpError::TooManyRequests(message) => JoinCallError::TooManyRequests(message),
+            HttpError::InternalError(message) => JoinCallError::InternalError(message),
+            other => JoinCallError::Unknown(other.message()),
+        }
     }
 }
 
@@ -1021,27 +1026,27 @@ mod tests {
         assert_eq!(message, "test message");
     }
 
-    // Auth error mapping tests
+    // Auth error From conversion tests
 
     #[test]
-    fn test_map_http_error_unauthorized_to_auth_error() {
+    fn test_http_error_unauthorized_converts_to_auth_error() {
         // Arrange
         let error = HttpError::Unauthorized("bad key".to_string());
 
         // Act
-        let auth_error = map_http_error_to_auth_error(error);
+        let auth_error: AuthError = error.into();
 
         // Assert
         assert!(matches!(auth_error, AuthError::Unauthorized(message) if message == "bad key"));
     }
 
     #[test]
-    fn test_map_http_error_too_many_requests_to_auth_error() {
+    fn test_http_error_too_many_requests_converts_to_auth_error() {
         // Arrange
         let error = HttpError::TooManyRequests("slow down".to_string());
 
         // Act
-        let auth_error = map_http_error_to_auth_error(error);
+        let auth_error: AuthError = error.into();
 
         // Assert
         assert!(
@@ -1050,40 +1055,40 @@ mod tests {
     }
 
     #[test]
-    fn test_map_http_error_not_found_falls_through_to_auth_unknown() {
+    fn test_http_error_not_found_falls_through_to_auth_unknown() {
         // Arrange
         let error = HttpError::NotFound("missing".to_string());
 
         // Act
-        let auth_error = map_http_error_to_auth_error(error);
+        let auth_error: AuthError = error.into();
 
         // Assert
         assert!(matches!(auth_error, AuthError::Unknown(message) if message == "missing"));
     }
 
-    // Query error mapping tests
+    // Query error From conversion tests
 
     #[test]
-    fn test_map_http_error_validation_to_query_error() {
+    fn test_http_error_validation_converts_to_query_error() {
         // Arrange
         let error = HttpError::Validation("bad input".to_string());
 
         // Act
-        let query_error = map_http_error_to_query_error(error);
+        let query_error: QueryError = error.into();
 
         // Assert
         assert!(matches!(query_error, QueryError::Validation(message) if message == "bad input"));
     }
 
-    // Resource error mapping tests
+    // Resource error From conversion tests
 
     #[test]
-    fn test_map_http_error_not_found_to_resource_error() {
+    fn test_http_error_not_found_converts_to_resource_error() {
         // Arrange
         let error = HttpError::NotFound("no such call".to_string());
 
         // Act
-        let resource_error = map_http_error_to_resource_error(error);
+        let resource_error: ResourceError = error.into();
 
         // Assert
         assert!(
@@ -1091,15 +1096,15 @@ mod tests {
         );
     }
 
-    // Join call error mapping tests
+    // Join call error From conversion tests
 
     #[test]
-    fn test_map_http_error_conflict_to_join_call_error() {
+    fn test_http_error_conflict_converts_to_join_call_error() {
         // Arrange
         let error = HttpError::Conflict("already joined".to_string());
 
         // Act
-        let join_call_error = map_http_error_to_join_call_error(error);
+        let join_call_error: JoinCallError = error.into();
 
         // Assert
         assert!(
@@ -1108,12 +1113,12 @@ mod tests {
     }
 
     #[test]
-    fn test_map_http_error_internal_to_join_call_error() {
+    fn test_http_error_internal_converts_to_join_call_error() {
         // Arrange
         let error = HttpError::InternalError("server crash".to_string());
 
         // Act
-        let join_call_error = map_http_error_to_join_call_error(error);
+        let join_call_error: JoinCallError = error.into();
 
         // Assert
         assert!(
