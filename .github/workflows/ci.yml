@@ -1,9 +1,10 @@
 on:
   pull_request:
+  repository_dispatch:
+      types: ["workflows-updated"]
   push:
     branches: ["main"]
 
 jobs:
   ci:
     uses: wasco-dev/workflows/.github/workflows/ci.yml@main
-
